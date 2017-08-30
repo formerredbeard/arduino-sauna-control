@@ -1,25 +1,7 @@
 //arduinosaunacontrol
 //Sauna Control to replace broken proprietary control system
-//
-//HW Requires
-// - Arduino
-// - LCDKeypad 16x2 screen
-// - 4.7Kohm resister
-// - Dallas Thermometer
-// - 4 channel 10a relay board or a 2 channel 20a relay
-//       1 channel for Light
-//       1-2 for heaters
-// - Buzzer / Speaker
-// - 5V Power Supply for Arduino
-//
-// I took apart the old proprietary control system and gutted it, but used the power plugs/connections
-// and the fuse box. I bypassed both the built in control panel and the speakers. The built in control
-// panel was built for 12V and I didn't want to figure out how it worked when a simple LCDKeypad could
-// replace it.
-//
-// A little code came from the arduino-sauna project posted by https://github.com/Kobra/arduino-sauna
-
-
+//Author: formerredbeard
+//Version: .3
 
 byte maxTemp = 119;
 byte minTemp = 85;
@@ -33,15 +15,14 @@ float tempF;
 int heater1Pin = 10;
 int heater2Pin = 11;
 int overheadLightPin = 12;
-char displayUnit[1]= {"F","m"};
+char displayUnit[2] = { 'F', 'm'};
 byte displayItem[1];
+String displayPrefix[2] = { "Temp: ", "Time: "};
+String displayOpMode[2] = { "     ", "OFF"};
 byte lastTime;
 byte TimeSet;
 byte btnPressed;
-String opModeText[1] = {"OFF", "    "};
-String linePrefix[1] = {"Temp: ", "Time: "};
-
-int opTime = 0;
+String alarmReason;
 unsigned long minuteTimer = 60000;
 unsigned long lastMinute;
 byte blinkLightCounter = 0;
@@ -91,7 +72,7 @@ int read_LCD_buttons()
  if (adc_key_in < 250)  return btnUP; 
  if (adc_key_in < 450)  return btnDOWN; 
  if (adc_key_in < 650)  return btnMODE; 
- if (adc_key_in < 850)  return btnSELECT;  
+ if (adc_key_in < 850)  return btnLIGHT;  
 */
  // For V1.0 comment the other threshold and use the one below:
  if (adc_key_in < 50)   return btnONOFF;  
@@ -104,8 +85,8 @@ int read_LCD_buttons()
 }
 
 void printLine(int LineNum) {
-  Serial.println(LineNum);
-  lineDisplay =linePrefix[LineNum] + String(displayItem[LineNum]) + displayUnit[LineNum] + setModeText + opModeText[LineNum];
+//  Serial.println(LineNum);
+  lineDisplay =displayPrefix[LineNum] + String(displayItem[LineNum]) + displayUnit[LineNum] + setModeText + displayOpMode[LineNum];
   len=lineDisplay.length();
   for(s=0; s<16-len; s++) lineDisplay+=" ";
   lcd.setCursor(0,LineNum);
@@ -128,14 +109,26 @@ void setTime(int incTime){
   }
 }
 
+void turnOff(){
+    displayOpMode[0]="    ";
+    displayOpMode[1]="OFF";
+    displayItem[0]=TempSet;
+    displayItem[1]=TimeSet;
+    heaterCtrl(LOW);         
+    printLine(1);
+    printLine(0);
+    opState = 0; 
+
+}
+
 void heaterCtrl(int hctrl){
    digitalWrite(heater1Pin, hctrl);
    digitalWrite(heater2Pin, hctrl);
    if (hctrl) {
-    opModeText[1] = "H  On";  
+    displayOpMode[0] = "H  On";  
    }
    else {
-    opModeText[1] = "H Off";
+    displayOpMode[0] = "H Off";
    }
 }
 
@@ -144,23 +137,19 @@ void OnState(){
     btnPressed = read_LCD_buttons();
     switch (btnPressed) {
       case btnONOFF:
-         opState = 0; //Change to OffState
-         opModeText[1]="   ";
-         opModeText[0]="  ";
-         printLine(1);
+         turnOff();
+         delay(10000);
+         return;
          break;
       case btnLIGHT:
          digitalWrite(overheadLightPin, !digitalRead(overheadLightPin));
          break;      
-    
+    }
     //check timer
     if ((millis() - lastMinute) > minuteTimer) {
         lastMinute=millis();
         if (--displayItem[1] < 1){
-          heaterCtrl(LOW);
-          opState = 0;
-          opModeText[1]="   ";
-          opModeText[0]="  ";
+          turnOff();
           //Sound End Buzzer
           //Blink Light
           while (blinkLightCounter < 14) {   
@@ -168,16 +157,19 @@ void OnState(){
                 digitalWrite(overheadLightPin, !digitalRead(overheadLightPin));
                 delay(750);
           }
-          blinkLightCounter = 0; 
+          blinkLightCounter = 0;
+          return; 
         }
     }
     //check temp and take appropriate actions with the heaters
     tempC = sensors.getTempC(SensorAddr);
     tempF = DallasTemperature::toFahrenheit(tempC);
+    Serial.println(tempF);
+
     displayItem[0]=tempF;
-    if (tempF > maxTemp){
+    if ((tempF > maxTemp) or (tempF < -130)){
       opState = 3;  
-    }
+    } 
     if (tempF > TempSet) {
       //turn off heaters
       heaterCtrl(LOW);
@@ -186,7 +178,7 @@ void OnState(){
       //turn on heaters
       heaterCtrl(HIGH);
     }
-    }
+    
     //Update Display 
     printLine(0);
     printLine(1);
@@ -199,7 +191,8 @@ void OffState(){
     switch (btnPressed) {
       case btnONOFF:
          opState = 1; //Change to OnState
-         opModeText[0]=" ON";
+         delay(10000); //just till I learn how to debounce the buttons
+         displayOpMode[1]=" ON";
          printLine(1);
          if (lastTemp!=TempSet) {
           lastTemp = TempSet;
@@ -210,9 +203,10 @@ void OffState(){
           EEPROM.write(LastTimeAddr,lastTime);
          }
          //Set time for timer to start
-         opTime=TimeSet;
+ 
          printLine(0);
          printLine(1);    
+         lastMinute=millis();
          break;
       case btnLIGHT:
          digitalWrite(overheadLightPin, !digitalRead(overheadLightPin));
@@ -275,7 +269,7 @@ void alarmState(){
   heaterCtrl(LOW);
   //Sound Alarm Bell
   lcd.setCursor(0,0);
-  lcd.print("  TEMP TOO HIGH ");
+  lcd.print("ALARM: "+String(tempF)+"F");
   lcd.setCursor(0,1);
   lcd.print("  REMOVE POWER  ");
   //Blink light first few times
@@ -311,8 +305,8 @@ void setup() {
   Serial.println(TempLow);
     
   TimeSet = EEPROM.read(LastTimeAddr);
-  if(lastTime < 5 || lastTime > 99) {
-    lastTime = 20;
+  if(lastTime < 2 || lastTime > 99) {
+    lastTime = 2;
   }
   TimeSet = lastTime;
 
