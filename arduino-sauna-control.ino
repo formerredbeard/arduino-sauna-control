@@ -1,37 +1,38 @@
 //arduinosaunacontrol
 //Sauna Control to replace broken proprietary control system
 //Author: formerredbeard
-//Version: .3
+//Version: .5
 
+//Temperature Variables and Constants
 byte maxTemp = 119;
 byte minTemp = 85;
+int lowAlarmTemp = 0;
+byte highAlarmTemp = 120;
+byte TempLow = 0;
 byte lastTemp;
 byte TempSet;
-byte opState = 0;
-String setModeText;
-byte setModeLevel = 0;
 float tempC;
 float tempF;
-int heater1Pin = 10;
-int heater2Pin = 11;
-int overheadLightPin = 12;
-char displayUnit[2] = { 'F', 'm'};
-byte displayItem[1];
-String displayPrefix[2] = { "Temp: ", "Time: "};
-String displayOpMode[2] = { "     ", "OFF"};
+
+//Time and Timer Variables
 byte lastTime;
 byte TimeSet;
-byte btnPressed;
-String alarmReason;
 unsigned long minuteTimer = 60000;
 unsigned long lastMinute;
-byte blinkLightCounter = 0;
-String lineDisplay;
-byte s;
-byte len;
-byte TempLow = 0;
 
-//Store values in EEPROM
+//State of operation Variables
+byte opState = 0;
+char setModeText[2] = { ' ', ' '};
+byte setModeLevel = 0;
+String displayOpMode[2] = { "     ", "OFF"};
+
+//Pins for Output
+byte heater1Pin = 10;
+byte heater2Pin = 11;
+byte overheadLightPin = 12;
+byte buzzerPin = 3;
+
+//Variables for EEPROM
 #include <EEPROM.h>
 byte LastTempAddr = 0;
 byte LastTimeAddr = 1;
@@ -46,8 +47,8 @@ DallasTemperature sensors(&oneWire);
 //DeviceAddress SensorAddr = { 0x28, 0xFF, 0x55, 0x8E, 0x03, 0x15, 0x02, 0x88 };
 DeviceAddress SensorAddr;
 
+//Display and Button Variables
 //LCD Screen - RobotDyn
-//#include <LCDKeypad.h>
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 // define some values used by the panel    buttons
@@ -59,14 +60,29 @@ int adc_key_in  = 0;
 #define btnMODE   3
 #define btnLIGHT  4
 #define btnNONE   5
+char displayUnit[2] = { 'F', 'm'};
+byte displayItem[2];
+String displayPrefix[2] = { "Temp: ", "Time: "};
+byte btnPressed;
+byte blinkLightCounter = 0;
+String lineDisplay;
+byte s;
+byte len;
+long lastDebounceTime = 0;   // the last time the output pin was toggled
+byte debounceDelay = 15;     // Adjust for jitter (if you get a false reading increase this number)
+byte lastButtonState;    // the previous reading from the input pin
+byte pressedBtn = 0;
+
+// ---------------------------------------------------
+//Start of Function Definitions
 
 // read the buttons
-int read_LCD_buttons()
-{
+int read_LCD_buttons(){
  adc_key_in = analogRead(0);      // read the value from the sensor 
- // my buttons when read are centered at these valies: 0, 144, 329, 504, 741
+
+ //my buttons when read are centered at these valies: 0, 144, 329, 504, 741
  // we add approx 50 to those values and check to see if we are close
- if (adc_key_in > 1000) return btnNONE; // W e make this the 1st option for speed reasons since it will be the most likely result
+ // if (adc_key_in > 1000) return btnNONE; // W e make this the 1st option for speed reasons since it will be the most likely result
  // For V1.1 us this threshold
 /* if (adc_key_in < 50)   return btnONOFF;  
  if (adc_key_in < 250)  return btnUP; 
@@ -74,39 +90,58 @@ int read_LCD_buttons()
  if (adc_key_in < 650)  return btnMODE; 
  if (adc_key_in < 850)  return btnLIGHT;  
 */
- // For V1.0 comment the other threshold and use the one below:
- if (adc_key_in < 50)   return btnONOFF;  
- if (adc_key_in < 195)  return btnUP; 
- if (adc_key_in < 380)  return btnDOWN; 
- if (adc_key_in < 555)  return btnMODE; 
- if (adc_key_in < 790)  return btnLIGHT;   
-
- return btnNONE;  // when all others fail, return this...
+ byte tmpButtonState = btnNONE;  // when all others fail, tmpButtonState = ...
+ if (adc_key_in < 790)  tmpButtonState = btnLIGHT; 
+ if (adc_key_in < 555)  tmpButtonState = btnMODE; 
+ if (adc_key_in < 380)  tmpButtonState = btnDOWN; 
+ if (adc_key_in < 195)  tmpButtonState = btnUP; 
+ if (adc_key_in < 50)   tmpButtonState = btnONOFF;  
+  
+ //Serial.print("tmpButtonState");
+ //Serial.println(tmpButtonState);
+ 
+    // If the switch changed (due to noise OR pressing)
+    if (tmpButtonState != lastButtonState) {
+        // reset the debouncing timer
+        lastDebounceTime = millis();
+        lastButtonState = tmpButtonState;
+        pressedBtn = 1;
+    }
+  
+   if (((millis() - lastDebounceTime) > debounceDelay) and (pressedBtn > 0)) {
+        // Assume this press is legitimate, so set it as btnPressed
+        pressedBtn = 0;
+        return tmpButtonState;
+    }
+ return btnNONE;  
 }
 
-void printLine(int LineNum) {
+void updateDisplay() {
 //  Serial.println(LineNum);
-  lineDisplay =displayPrefix[LineNum] + String(displayItem[LineNum]) + displayUnit[LineNum] + setModeText + displayOpMode[LineNum];
-  len=lineDisplay.length();
-  for(s=0; s<16-len; s++) lineDisplay+=" ";
-  lcd.setCursor(0,LineNum);
-  lcd.print(lineDisplay);
-  Serial.println(lineDisplay);
+  byte LineNum;
+  for (LineNum=0; LineNum<2; LineNum++){
+    lineDisplay =displayPrefix[LineNum] + String(displayItem[LineNum]) + displayUnit[LineNum] + setModeText[LineNum] + displayOpMode[LineNum];
+    len=lineDisplay.length();
+    for(s=0; s<16-len; s++) lineDisplay+=" ";
+    lcd.setCursor(0,LineNum);
+    lcd.print(lineDisplay);
+//    Serial.println(lineDisplay);
+  } 
 }
 
 void setTemp(int incTemp){
-  if ((TempSet > minTemp) and (TempSet < maxTemp)) {
-    TempSet=TempSet + incTemp;
-    displayItem[0]=TempSet;
-    TempLow = TempSet - 2;
-  }
+  TempSet=TempSet + incTemp;
+  if (TempSet < minTemp) TempSet=minTemp;
+  if (TempSet > maxTemp) TempSet=maxTemp;
+  displayItem[0]=TempSet;
+  TempLow = TempSet - 2;
 }
 
 void setTime(int incTime){
-  if ((TimeSet > 1) and (TimeSet < 99)) {
-    TimeSet=TimeSet + incTime;
-    displayItem[1]=TimeSet;  
-  }
+  TimeSet=TimeSet + incTime;
+  if (TimeSet < 1) TimeSet=1;
+  if (TimeSet > 99) TimeSet=99;
+  displayItem[1]=TimeSet;  
 }
 
 void turnOff(){
@@ -115,10 +150,8 @@ void turnOff(){
     displayItem[0]=TempSet;
     displayItem[1]=TimeSet;
     heaterCtrl(LOW);         
-    printLine(1);
-    printLine(0);
+    updateDisplay();
     opState = 0; 
-
 }
 
 void heaterCtrl(int hctrl){
@@ -135,27 +168,34 @@ void heaterCtrl(int hctrl){
 void OnState(){
     //check buttons
     btnPressed = read_LCD_buttons();
-    switch (btnPressed) {
-      case btnONOFF:
+//    if (btnPressed != btnNONE) {
+      switch (btnPressed) {
+        case btnONOFF:
          turnOff();
-         delay(10000);
+         delay(3000);  //until I get Debouncing Buttons fixed. After that likely change to 3000
          return;
          break;
-      case btnLIGHT:
+        case btnLIGHT:
          digitalWrite(overheadLightPin, !digitalRead(overheadLightPin));
+         Serial.print("Light State: ");
+         Serial.println(digitalRead(overheadLightPin));
+
          break;      
-    }
+//      }
+    }  
     //check timer
     if ((millis() - lastMinute) > minuteTimer) {
         lastMinute=millis();
         if (--displayItem[1] < 1){
           turnOff();
-          //Sound End Buzzer
-          //Blink Light
+          //Sound End Buzzer and Blink Light
           while (blinkLightCounter < 14) {   
                 blinkLightCounter++;
                 digitalWrite(overheadLightPin, !digitalRead(overheadLightPin));
-                delay(750);
+                tone(buzzerPin, 1000);
+                delay(400);
+                noTone(buzzerPin);
+                delay (400);
           }
           blinkLightCounter = 0;
           return; 
@@ -167,7 +207,7 @@ void OnState(){
     Serial.println(tempF);
 
     displayItem[0]=tempF;
-    if ((tempF > maxTemp) or (tempF < -130)){
+    if ((tempF > highAlarmTemp) or (tempF < lowAlarmTemp)){
       opState = 3;  
     } 
     if (tempF > TempSet) {
@@ -180,8 +220,7 @@ void OnState(){
     }
     
     //Update Display 
-    printLine(0);
-    printLine(1);
+    updateDisplay();
 
 }
 
@@ -191,9 +230,9 @@ void OffState(){
     switch (btnPressed) {
       case btnONOFF:
          opState = 1; //Change to OnState
-         delay(10000); //just till I learn how to debounce the buttons
+         //delay(3000); //just till I learn how to debounce the buttons
          displayOpMode[1]=" ON";
-         printLine(1);
+         updateDisplay();
          if (lastTemp!=TempSet) {
           lastTemp = TempSet;
           EEPROM.write(LastTempAddr,TempSet);
@@ -204,65 +243,65 @@ void OffState(){
          }
          //Set time for timer to start
  
-         printLine(0);
-         printLine(1);    
+         updateDisplay();    
          lastMinute=millis();
          break;
       case btnLIGHT:
          digitalWrite(overheadLightPin, !digitalRead(overheadLightPin));
+         Serial.print("Light State: ");
+         Serial.println(digitalRead(overheadLightPin));
          break;      
-       case btnMODE:
+      case btnMODE:
          opState = 2; //Change to SetState
-         setModeText = " ";
          setModeLevel = 0;
-         printLine(setModeLevel);
+         displayOpMode[1]="Settings";
+         updateDisplay();
          break;
     }
 
 }
 
 void SetState(){
-    setModeText = "<";
-    printLine(setModeLevel);
-    delay(200);
+    updateDisplay();
+    setModeText[setModeLevel] = '<';
+    updateDisplay();
     //check buttons
-    setModeText = " ";
     btnPressed = read_LCD_buttons();
     switch (btnPressed) {
       case btnUP:
-         if (setModeLevel) {
+         if (setModeLevel < 1) {
          setTemp(1);           
          }
          else {
          setTime(1); 
          }
+         break;
       case btnDOWN:
-         if (setModeLevel) {
+         if (setModeLevel < 1) {
          setTemp(-1);           
          }
          else {
          setTime(-1); 
-         }      
+         }
+         break;      
        case btnMODE:
          if (setModeLevel < 1){
-          setModeText = " ";
-          printLine(setModeLevel);
+          setModeText[setModeLevel] = ' ';
+          updateDisplay();
           setModeLevel=1;
+ 
          }
          else{
+          setModeText[setModeLevel] = ' ';
           setModeLevel=0;
-          setModeText = " ";
           opState=0;
-          printLine(0);
-          printLine(1);
-          return;
+          displayOpMode[1]="OFF";
+          updateDisplay();
          }
+         break;
     }
      
- 
-    //set the temp or time
- 
-    printLine(setModeLevel);
+    updateDisplay();
 }
 
 void alarmState(){
@@ -273,28 +312,35 @@ void alarmState(){
   lcd.setCursor(0,1);
   lcd.print("  REMOVE POWER  ");
   //Blink light first few times
-  if (blinkLightCounter < 20) {   
-    blinkLightCounter++;
+  if (blinkLightCounter++ < 20) {   
     digitalWrite(overheadLightPin, HIGH);
+    tone(buzzerPin, 1500);
     delay(300);
     digitalWrite(overheadLightPin, LOW);
   }
+  noTone(buzzerPin);
   delay(700);
   lcd.setCursor(0,0);
   lcd.print("                ");
-  //Blink Light
+//  delay(50000);  //added for debug troubleshooting
 
 }
 
+
+// ---------------------------------------------------
+//Start of Builtin Setup and Loop function Definitions
+
+
 void setup() {
+
   Serial.begin(9600);
   Serial.println("Sauna Test");
+  opState = 0;
   lcd.begin(16, 2);
   lcd.clear();
-  // put your setup code here, to run once:
   lastTemp = EEPROM.read(LastTempAddr);
   if(lastTemp < 20 || lastTemp > 120) {
-    lastTemp = 97;
+    lastTemp = 92;  //Starting temp used for testing as I could put hand on probe to warm.
   }
   TempSet = lastTemp;
   TempLow = TempSet - 2;
@@ -304,33 +350,36 @@ void setup() {
   Serial.println(TempSet);
   Serial.println(TempLow);
     
-  TimeSet = EEPROM.read(LastTimeAddr);
+  lastTime = EEPROM.read(LastTimeAddr);
   if(lastTime < 2 || lastTime > 99) {
-    lastTime = 2;
+    lastTime = 20;
   }
   TimeSet = lastTime;
 
   displayItem[1] = TimeSet;
 
   sensors.begin();
-  
-  setModeText = " ";
-  
-  Serial.println("TimeSet lastTime");
+  if (!sensors.getAddress(SensorAddr, 0)) opState = 3;
+  sensors.setResolution(SensorAddr, 9);
+  Serial.println("TimeSet");
   Serial.println(TimeSet);
-  Serial.println(lastTime);
 
-  printLine(0);
-  printLine(1);
+  updateDisplay();
   
   pinMode(heater1Pin, OUTPUT);
   pinMode(heater2Pin, OUTPUT);
   pinMode(overheadLightPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+
+  lastButtonState=btnNONE;
 
 
 }
 
 void loop() {
+  Serial.println(opState);
+  sensors.requestTemperatures(); // Send the command to get temperatures
+
   // put your main code here, to run repeatedly:
   switch (opState){
     case 0:
@@ -347,10 +396,10 @@ void loop() {
       break;
     default:
       //Force to off state
-      opState = 0;
-      //PUT CODE HERE TO INDICATE OFF
-      OnState();
-    break;
+      turnOff();
+      break;
   }
       
 }
+
+//End of Program
