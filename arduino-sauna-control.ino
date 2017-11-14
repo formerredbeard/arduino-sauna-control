@@ -1,7 +1,14 @@
 //arduinosaunacontrol
 //Sauna Control to replace broken proprietary control system
 //Author: formerredbeard
-//Version: .5
+//Version: .6
+
+//Reverse Relay Operations.
+//Set normallyClosed 
+//to true to have the Arduino send power to close the relay to engage the heaters
+//or false to send power to the relay to keep the heater off and remove power to engage heater
+//Note: This is only for Heaters - it will not change the Light pin output
+boolean normallyClosed = false;
 
 //Temperature Variables and Constants
 byte maxTemp = 119;
@@ -84,7 +91,7 @@ int read_LCD_buttons(){
  // we add approx 50 to those values and check to see if we are close
  // if (adc_key_in > 1000) return btnNONE; // W e make this the 1st option for speed reasons since it will be the most likely result
  // For V1.1 us this threshold
-/* if (adc_key_in < 50)   return btnONOFF;  
+ /* if (adc_key_in < 50)   return btnONOFF;  
  if (adc_key_in < 250)  return btnUP; 
  if (adc_key_in < 450)  return btnDOWN; 
  if (adc_key_in < 650)  return btnMODE; 
@@ -155,14 +162,21 @@ void turnOff(){
 }
 
 void heaterCtrl(int hctrl){
-   digitalWrite(heater1Pin, hctrl);
-   digitalWrite(heater2Pin, hctrl);
    if (hctrl) {
     displayOpMode[0] = "H  On";  
    }
    else {
     displayOpMode[0] = "H Off";
    }
+
+ 
+   //Reverse if necessary
+   if (normallyClosed) {
+    hctrl = !hctrl;
+   }
+   
+   digitalWrite(heater1Pin, hctrl);
+   digitalWrite(heater2Pin, hctrl);
 }
 
 void OnState(){
@@ -177,6 +191,7 @@ void OnState(){
          break;
         case btnLIGHT:
          digitalWrite(overheadLightPin, !digitalRead(overheadLightPin));
+         delay(1500); //Without this delay the unit would lose connection with the Temp Probe briefly when toggling light
          Serial.print("Light State: ");
          Serial.println(digitalRead(overheadLightPin));
 
@@ -368,7 +383,9 @@ void setup() {
   
   pinMode(heater1Pin, OUTPUT);
   pinMode(heater2Pin, OUTPUT);
+  heaterCtrl(LOW); 
   pinMode(overheadLightPin, OUTPUT);
+  
   pinMode(buzzerPin, OUTPUT);
 
   lastButtonState=btnNONE;
