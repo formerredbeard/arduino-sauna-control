@@ -1,7 +1,7 @@
 //arduinosaunacontrol
 //Sauna Control to replace broken proprietary control system
 //Author: formerredbeard
-//Version: .6
+//Version: .7
 
 //Reverse Relay Operations.
 //Set normallyClosed 
@@ -10,16 +10,18 @@
 //Note: This is only for Heaters - it will not change the Light pin output
 boolean normallyClosed = false;
 
-//Temperature Variables and Constants
-byte maxTemp = 119;
+//Temperature Variables and Constants. Temps are in F
+byte maxTemp = 150;
 byte minTemp = 85;
 int lowAlarmTemp = 0;
-byte highAlarmTemp = 120;
+byte highAlarmTemp = 165;  //Noted the temp crested about 5-6 degrees above the setTemp temp in my sauna with heaters off so this should be at least 15 degrees above the maxTemp
 byte TempLow = 0;
 byte lastTemp;
 byte TempSet;
 float tempC;
 float tempF;
+byte hOFF = 0;
+byte hON = 1;
 
 //Time and Timer Variables
 byte lastTime;
@@ -156,24 +158,24 @@ void turnOff(){
     displayOpMode[1]="OFF";
     displayItem[0]=TempSet;
     displayItem[1]=TimeSet;
-    heaterCtrl(LOW);         
+    heaterCtrl(hOFF);         
     updateDisplay();
     opState = 0; 
 }
 
-void heaterCtrl(int hctrl){
+void heaterCtrl(boolean hctrl){
    if (hctrl) {
     displayOpMode[0] = "H  On";  
    }
    else {
     displayOpMode[0] = "H Off";
    }
-
  
    //Reverse if necessary
-   if (normallyClosed) {
-    hctrl = !hctrl;
+   if (!normallyClosed) {
+     hctrl = !hctrl;  
    }
+
    
    digitalWrite(heater1Pin, hctrl);
    digitalWrite(heater2Pin, hctrl);
@@ -227,11 +229,11 @@ void OnState(){
     } 
     if (tempF > TempSet) {
       //turn off heaters
-      heaterCtrl(LOW);
+      heaterCtrl(hOFF);
     }
     if (tempF < TempLow) {
       //turn on heaters
-      heaterCtrl(HIGH);
+      heaterCtrl(hON);
     }
     
     //Update Display 
@@ -320,7 +322,7 @@ void SetState(){
 }
 
 void alarmState(){
-  heaterCtrl(LOW);
+  heaterCtrl(hOFF);
   //Sound Alarm Bell
   lcd.setCursor(0,0);
   lcd.print("ALARM: "+String(tempF)+"F");
@@ -383,7 +385,7 @@ void setup() {
   
   pinMode(heater1Pin, OUTPUT);
   pinMode(heater2Pin, OUTPUT);
-  heaterCtrl(LOW); 
+  heaterCtrl(hOFF); 
   pinMode(overheadLightPin, OUTPUT);
   
   pinMode(buzzerPin, OUTPUT);
