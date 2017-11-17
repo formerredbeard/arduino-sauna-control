@@ -35,25 +35,25 @@ HW Required
  
  Features desired to raise to a 1.0 version: 
 ----
-  a. Preheat mode with indication Sauna is to operating temp. I am thinking a beep when a minimum operating temperature is reached.
+  a. Preheat mode with indication Sauna is to operating temp. I am thinking a beep when a minimum operating temperature is reached. 
   b. Add ability to change between C and F.
  
  Future potential features that could be added: 
 ----
-  a. Add variable stored in EEProm for tracking hours in use ( potentially since manually reset )
-  b. IP connectivity for monitoring purposes (not likely)
-  c. Track time for individual person in Sauna (If wanted to track days would need to add a RTC to the mix)
+  a. Add variable stored in EEProm for tracking hours in use ( potentially since manually reset ) 
+  b. IP connectivity for monitoring purposes (not likely) 
+  c. Track time for individual person in Sauna (If wanted to track days would need to add a RTC to the mix) 
  
 
- Rev History 
+ Rev History: 
 ----
- .7 Fixed the reverse logic for the Heater Operation. Also adjusted up the Maximums for temp. - Tested as functional and works.
- .6 Changed logic to allow for reverse logic on the control board, added delay to reading temp probe when light is turned off or on.
- .5 Bug fixes mostly and first fully functional version (I thought)
- .4 Bug fixes - First potentially usable version
- .3 Bug fixes and added Alarm State
- .2 First commit to Github
- .1 Initial logic
+ .7 Fixed the reverse logic for the Heater Operation. Also adjusted up the Maximums for temp. - Tested as functional and works. 
+ .6 Changed logic to allow for reverse logic on the control board, added delay to reading temp probe when light is turned off or on. 
+ .5 Bug fixes mostly and first fully functional version (I thought) 
+ .4 Bug fixes - First potentially usable version 
+ .3 Bug fixes and added Alarm State 
+ .2 First commit to Github 
+ .1 Initial logic 
  
  Known Issues: 
 ----
@@ -61,5 +61,5 @@ HW Required
 
 Acknowledgements:
 ----
-- A little code came from the arduino-sauna project posted by https:github.com/Kobra/arduino-sauna
+- A little code came from the arduino-sauna project posted by https://github.com/Kobra/arduino-sauna
 - Some code was brought in and modified from sample code for the LCDKeypad at https://www.dfrobot.com/wiki/index.php/Arduino_LCD_KeyPad_Shield_(SKU:_DFR0009)#Sample_Code
