@@ -1,7 +1,7 @@
 //arduinosaunacontrol
 //Sauna Control to replace broken proprietary control system
 //Author: formerredbeard
-//Version: .7
+//Version: .8
 
 //Reverse Relay Operations.
 //Set normallyClosed 
@@ -11,10 +11,10 @@
 boolean normallyClosed = false;
 
 //Temperature Variables and Constants. Temps are in F
-byte maxTemp = 150;
+byte maxTemp = 195;
 byte minTemp = 85;
 int lowAlarmTemp = 0;
-byte highAlarmTemp = 165;  //Noted the temp crested about 5-6 degrees above the setTemp temp in my sauna with heaters off so this should be at least 15 degrees above the maxTemp
+byte highAlarmTemp = 212;  //Noted the temp crested about 5-6 degrees above the setTemp temp in my sauna with heaters off so this should be at least 15 degrees above the maxTemp
 byte TempLow = 0;
 byte lastTemp;
 byte TempSet;
@@ -360,7 +360,7 @@ void setup() {
     lastTemp = 92;  //Starting temp used for testing as I could put hand on probe to warm.
   }
   TempSet = lastTemp;
-  TempLow = TempSet - 2;
+  TempLow = TempSet - 1;
   displayItem[0] = TempSet;
   Serial.println("lastTemp TempSet TempLow");
   Serial.println(lastTemp);

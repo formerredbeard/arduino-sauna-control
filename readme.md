@@ -47,6 +47,7 @@ HW Required
 
  Rev History: 
 ----
+ .8 Reduced the Temp Difference to turn on the heaters to 1 degree F from 2. The time that it took for the temp to lower allowed, the heaters to cool too much and the time to heat back up was severely compromised. May need to change logic for maintaining heat to have heaters come on periodically for couple minutes as long as temp is within SetTemp and SetTemp+5 or something like that.
  .7 Fixed the reverse logic for the Heater Operation. Also adjusted up the Maximums for temp. - Tested as functional and works. 
  .6 Changed logic to allow for reverse logic on the control board, added delay to reading temp probe when light is turned off or on. 
  .5 Bug fixes mostly and first fully functional version (I thought) 
