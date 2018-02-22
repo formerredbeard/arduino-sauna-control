@@ -33,19 +33,18 @@ HW Required
  
  
  
- Feature needed to raise to .9:
- Change in heater logic to start cycling heaters when around the setTemp to keep the heaters warm enough to work properly.
  
  Features desired to raise to a 1.0 version: 
 ----
-  a. Preheat mode with indication Sauna is to operating temp. I am thinking a beep when a minimum operating temperature is reached. 
-  b. Add ability to change between C and F.
+ - Change in heater logic to start cycling heaters when around the setTemp to keep the heaters warm enough to work properly.
+ - Preheat mode with indication Sauna is to operating temp. I am thinking a beep when a minimum operating temperature is reached. 
+ - Add ability to change between C and F.
  
  Future potential features that could be added: 
 ----
-  a. Add variable stored in EEProm for tracking hours in use ( potentially since manually reset ) 
-  b. IP connectivity for monitoring purposes (not likely) 
-  c. Track time for individual person in Sauna (If wanted to track days would need to add a RTC to the mix) 
+ - Add variable stored in EEProm for tracking hours in use ( potentially since manually reset ) 
+ - IP connectivity for monitoring purposes (not likely) 
+ - Track time for individual person in Sauna (If wanted to track days would need to add a RTC to the mix) 
  
 
  Rev History: 
@@ -72,8 +71,11 @@ HW Required
  Known Issues: 
 ----
 - Temp in Sauna can crest 5F or more above the set temp due to the latent heat in the heaters.
+- The time for the Sauna to cool to below the set temperature may be too long resulting in the heaters having cooled too much. This causes a severe time lag in coming back up to temperature as the sauna continues to drop in temperature. Hence the need for the heater control logic to be improved as mentioned above.
+
+
 
 Acknowledgements:
 ----
-- A little code came from the arduino-sauna project posted by https://github.com/Kobra/arduino-sauna
+- A very small portion of code was copied from the arduino-sauna project posted by https://github.com/Kobra/arduino-sauna
 - Some code was brought in and modified from sample code for the LCDKeypad at https://www.dfrobot.com/wiki/index.php/Arduino_LCD_KeyPad_Shield_(SKU:_DFR0009)#Sample_Code
