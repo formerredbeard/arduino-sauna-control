@@ -33,6 +33,9 @@ HW Required
  
  
  
+ Feature needed to raise to .9:
+ Change in heater logic to start cycling heaters when around the setTemp to keep the heaters warm enough to work properly.
+ 
  Features desired to raise to a 1.0 version: 
 ----
   a. Preheat mode with indication Sauna is to operating temp. I am thinking a beep when a minimum operating temperature is reached. 
@@ -47,14 +50,24 @@ HW Required
 
  Rev History: 
 ----
+ .8a Logic Bug fix on reading temp and time from EEProm
+
  .8 Reduced the Temp Difference to turn on the heaters to 1 degree F from 2. The time that it took for the temp to lower allowed, the heaters to cool too much and the time to heat back up was severely compromised. May need to change logic for maintaining heat to have heaters come on periodically for couple minutes as long as temp is within SetTemp and SetTemp+5 or something like that.
+
  .7 Fixed the reverse logic for the Heater Operation. Also adjusted up the Maximums for temp. - Tested as functional and works. 
+
  .6 Changed logic to allow for reverse logic on the control board, added delay to reading temp probe when light is turned off or on. 
+
  .5 Bug fixes mostly and first fully functional version (I thought) 
+
  .4 Bug fixes - First potentially usable version 
+
  .3 Bug fixes and added Alarm State 
+
  .2 First commit to Github 
+
  .1 Initial logic 
+
  
  Known Issues: 
 ----

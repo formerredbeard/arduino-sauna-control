@@ -1,7 +1,7 @@
 //arduinosaunacontrol
 //Sauna Control to replace broken proprietary control system
 //Author: formerredbeard
-//Version: .8
+//Version: .8a
 
 //Reverse Relay Operations.
 //Set normallyClosed 
@@ -14,7 +14,7 @@ boolean normallyClosed = false;
 byte maxTemp = 195;
 byte minTemp = 85;
 int lowAlarmTemp = 0;
-byte highAlarmTemp = 212;  //Noted the temp crested about 5-6 degrees above the setTemp temp in my sauna with heaters off so this should be at least 15 degrees above the maxTemp
+byte highAlarmTemp = 211;  //Noted the temp crested about 5-6 degrees above the setTemp temp in my sauna with heaters off so this should be at least 15 degrees above the maxTemp
 byte TempLow = 0;
 byte lastTemp;
 byte TempSet;
@@ -193,7 +193,7 @@ void OnState(){
          break;
         case btnLIGHT:
          digitalWrite(overheadLightPin, !digitalRead(overheadLightPin));
-         delay(1500); //Without this delay the unit would lose connection with the Temp Probe briefly when toggling light
+         delay(1500); //Without a delay the unit would lose connection with the Temp Probe briefly when toggling light. Did not test what min delay here would be.
          Serial.print("Light State: ");
          Serial.println(digitalRead(overheadLightPin));
 
@@ -356,7 +356,7 @@ void setup() {
   lcd.begin(16, 2);
   lcd.clear();
   lastTemp = EEPROM.read(LastTempAddr);
-  if(lastTemp < 20 || lastTemp > 120) {
+  if((lastTemp < minTemp) || (lastTemp > maxTemp)) {
     lastTemp = 92;  //Starting temp used for testing as I could put hand on probe to warm.
   }
   TempSet = lastTemp;
@@ -368,7 +368,7 @@ void setup() {
   Serial.println(TempLow);
     
   lastTime = EEPROM.read(LastTimeAddr);
-  if(lastTime < 2 || lastTime > 99) {
+  if((lastTime < 2) || (lastTime > 99)) {
     lastTime = 20;
   }
   TimeSet = lastTime;
