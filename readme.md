@@ -8,15 +8,16 @@ HW Required
  - Arduino
  - LCDKeypad 16x2 screen
  - 4.7Kohm resister
- -  Dallas Thermometer DS18B20 Temperature Probe preferably waterproof with 2-3m lead
+ - Dallas Thermometer DS18B20 Temperature Probe preferably waterproof with 2-3m lead
  - 4 channel 10A relay board or a 2 channel 20A relay
        1 channel for Light
        1-2 for heaters (I broke to two circuits for heaters so I could use the 10A board)
  - Buzzer / Speaker
  - 5V Power Supply for Arduino
- - Highly Recommend a physical power switch! (see safety note below)
- - Appropriate wires
+ - Highly Recommend a physical master power switch! (see safety note below)
+ - Appropriate wires and connectors
  - Fuses
+ - Motherboard standoffs with screws for mounting Control Board in control box as well as the Arduino
  
 
  I took apart the old proprietary control system and gutted it, but used the power plugs/connections
